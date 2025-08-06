@@ -1,6 +1,7 @@
 from .schemas import State
-from typing import Tuple, List, Any
+from typing import Tuple, List, Any, Dict
 from langchain_core.messages.utils import convert_to_openai_messages
+from email_assistant.schemas import ProcessEmailResponse
 
 def email_parser(email : dict) -> Tuple[str, str, str, str]:
     """parsers given email json into required fields"""
@@ -65,3 +66,42 @@ def messages_formatter(messages : List[Any]) :
         formatted_messages.append(f"{role.upper()} : {content}")
     # print("formatted message:",formatted_messages)
     return "\n\n".join(formatted_messages)
+
+def _get_allowed_actions(config : Dict[str,bool]) -> List[str]:
+    #fetch the list of allowed actions for a human
+    allowed_actions = []
+    if config.get("allow_accept",False):
+        allowed_actions.append("accept")
+    if config.get("allow_edit",False):
+        allowed_actions.append('edit')
+    if config.get('allow_ignore',False):
+        allowed_actions.append('ignore')
+    if config.get('allow_respond',False):
+        allowed_actions.append('respond')
+    return allowed_actions
+
+def _extract_final_result(state: Dict[str, Any]) -> ProcessEmailResponse:
+    """Extract final result from completed workflow state."""
+    # Extract classification from state
+    classification = state.get("classification_decision", "respond")
+    
+    # Extract response from messages
+    response_text = "No response generated"
+    reasoning = f"Email classified as: {classification}"
+    
+    # Look for the last tool execution result in messages
+    messages = state.get("messages", [])
+    
+    # Find the most recent ToolMessage using Python best practices
+    for message in reversed(messages):
+        if getattr(message, 'tool_call_id', None) is not None:
+            content = str(message.content)
+            if "Email sent" in content or " scheduled" in content:
+                response_text = content
+                break
+    
+    return ProcessEmailResponse(
+        classification=classification,
+        response=response_text,
+        reasoning=reasoning
+    )

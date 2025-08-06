@@ -182,14 +182,14 @@ email_assistant.add_node('response_agent', compiled_response_agent )
 
 email_assistant.add_edge(START, 'triage_router')
 
-compiled_email_assistant = email_assistant.compile()
+compiled_email_assistant_hitl = email_assistant.compile(checkpointer= checkpointer)
 
-# save1 = compiled_email_assistant.get_graph(xray=True).draw_mermaid_png()
+# save1 = compiled_email_assistant_hitl.get_graph(xray=True).draw_mermaid_png()
 # with open("compiled_email_asst.png" , "wb") as f:
 #     f.write(save1)
 
 def process_email(email_data : dict) :
-    result = compiled_email_assistant.invoke({ 'email_input': email_data})
+    result = compiled_email_assistant_hitl.invoke({ 'email_input': email_data})
     response_text = "no response generated"
     # print(f"result by graph:" ,result)
 

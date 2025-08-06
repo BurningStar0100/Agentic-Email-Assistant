@@ -43,6 +43,18 @@ class ProcessEmailRequest(BaseModel):
     """Defines the input request schema"""
     email_input : EmailInput
 
+# HITL-specific schemas
+class HumanResponse(BaseModel):
+    """Schema for human responses in HITL workflows."""
+    
+    type: Literal["accept", "edit", "ignore", "response"] = Field(
+        description="Type of human response"
+    )
+    args: Optional[Any] = Field(
+        default=None,
+        description="Arguments for edit/response actions"
+    )
+
 class ProcessEmailHITLRequest(BaseModel):
     """Defines the input request schema"""
     email_input : Optional[EmailInput] = Field(
