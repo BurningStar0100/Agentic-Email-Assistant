@@ -5,7 +5,9 @@ from email_assistant.agents import process_email
 from email_assistant.schemas import ProcessEmailHITLRequest, ProcessEmailHITLResponse, InterruptInfo
 import uuid
 from email_assistant.agents_HITL import compiled_email_assistant_hitl
-from email_assistant.utils import _get_allowed_actions , _extract_final_results
+from email_assistant.utils import _get_allowed_actions , _extract_final_result
+
+
 from langgraph.types import Command
 
 app = FastAPI(
@@ -84,12 +86,16 @@ async def process_email_hitl_endpoint(request : ProcessEmailHITLRequest) :
     """
     try:    
         #determine if the incoming request is a new workflow or resume request
-        is_resume = request.thread_id is not None and request.thread_id is not None
+        print(type(request))
+        print(request.email_input)
+        is_resume = request.thread_id is not None and request.human_response is not None
         is_new = request.email_input is not None and request.thread_id is None
-
+        print('#'*40)
+        print("is_resume:",is_resume)
+        print("is_new:",is_new)
         if not is_resume and not is_new:
             raise HTTPException(
-                status_code= '400',
+                status_code= 400,
                 detail= "Either provide 'email_input' for new request or 'thread_id'+ 'human_response' for resume" 
             )
         thread_id = request.thread_id if is_resume else str(uuid.uuid4())
@@ -107,25 +113,29 @@ async def process_email_hitl_endpoint(request : ProcessEmailHITLRequest) :
             for chunk in compiled_email_assistant_hitl.stream( #chunk is state after every node
                 {'email_input': email_dict},
                 config= config,  ):
+                print("#"*40)
+                print('Printing the chunks at each step:',chunk)
                 if '__interrupt__' in chunk:
+                    print("printing the interrupt part of the chunk")
                     print(chunk['__interrupt__'])
                     interrupt_data = chunk['__interrupt__'][0].value[0]
-                return ProcessEmailHITLResponse(
-                    status= 'interrupted',
-                    thread_id= thread_id,
-                    interrupt=InterruptInfo(
-                        action= interrupt_data['action_request']['action'],
-                        args= interrupt_data['action_request']['args'],
-                        description=interrupt_data['description'],
-                        allowed_actions= _get_allowed_actions(interrupt_data['config'])
+                    return ProcessEmailHITLResponse(
+                        status= 'interrupted',
+                        thread_id= thread_id,
+                        interrupt=InterruptInfo(
+                            action= interrupt_data['action_request']['action'],
+                            args= interrupt_data['action_request']['args'],
+                            description=interrupt_data['description'],
+                            allowed_actions= _get_allowed_actions(interrupt_data['config'])
+                        )
                     )
-                )
         else:
             #resume from interrupt
             try:
                 state = compiled_email_assistant_hitl.get_state(config=config)
                 print('#'*40)
-                print("Printing state.values :", state.values)
+                print(state)
+                print("Printing state.values :", state)
                 if not state or not state.values :
                     raise HTTPException(
                         status_code= 400,
@@ -140,8 +150,10 @@ async def process_email_hitl_endpoint(request : ProcessEmailHITLRequest) :
                 ])
                 final_run_results = compiled_email_assistant_hitl.invoke(resume_command, config=config,)
                 print('#'*40)
-                print('Printing final_run_results :', final_run_results.values)
-                result = _extract_final_results(final_run_results.values)
+                print(type(final_run_results))
+                print(final_run_results)
+                #print('Printing final_run_results :', final_run_results.values)
+                result = _extract_final_result(final_run_results)
 
                 return ProcessEmailHITLResponse(
                     status='completed',

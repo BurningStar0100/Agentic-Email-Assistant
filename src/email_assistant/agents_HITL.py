@@ -71,7 +71,7 @@ def triage_interrupt_handler(state : State) :
         },
         'config' : {
             'allow_ignore' :True,
-            'allow_response' : True,
+            'allow_respond' : True,
             'allow_edit' : False,
             'allow_accept' : False,
         },
@@ -92,6 +92,8 @@ def triage_interrupt_handler(state : State) :
     }]
 
     if response['type'] == 'response' :
+        print('#'*40)
+        print("going to RESPOND because user said respond to the mail.")
         user_input = response['args']
         messages.append(
             {
@@ -101,6 +103,8 @@ def triage_interrupt_handler(state : State) :
         )
         goto = 'response_agent'
     elif response['type'] == 'ignore':
+        print('#'*40)
+        print("going to END because user said ignore the mail.")
         goto = END
 
     else :
@@ -167,7 +171,7 @@ response_agent.add_conditional_edges('llm_call',should_continue)
 response_agent.add_edge('tool_handler', 'llm_call')
 
 checkpointer = MemorySaver()
-compiled_response_agent = response_agent.compile(checkpointer= checkpointer)
+compiled_response_agent = response_agent.compile()
 
 # save1 = compiled_graph.get_graph().draw_mermaid_png()
 # with open("graph.png" , "wb") as f:
@@ -178,6 +182,7 @@ compiled_response_agent = response_agent.compile(checkpointer= checkpointer)
 email_assistant = StateGraph(State)
 
 email_assistant.add_node('triage_router', triage_router)
+email_assistant.add_node('triage_interrupt_handler',triage_interrupt_handler)
 email_assistant.add_node('response_agent', compiled_response_agent )
 
 email_assistant.add_edge(START, 'triage_router')

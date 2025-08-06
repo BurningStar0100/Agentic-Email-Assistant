@@ -80,11 +80,13 @@ def _get_allowed_actions(config : Dict[str,bool]) -> List[str]:
         allowed_actions.append('respond')
     return allowed_actions
 
-def _extract_final_result(state: Dict[str, Any]) -> ProcessEmailResponse:
+def _extract_final_result(state: State) -> ProcessEmailResponse:
     """Extract final result from completed workflow state."""
     # Extract classification from state
-    classification = state.get("classification_decision", "respond")
-    
+    print('#'*40)
+    print("trying to extract the final result")
+    classification = state.get("classification_response", "respond")
+    print("NO error occured")
     # Extract response from messages
     response_text = "No response generated"
     reasoning = f"Email classified as: {classification}"
@@ -95,6 +97,8 @@ def _extract_final_result(state: Dict[str, Any]) -> ProcessEmailResponse:
     # Find the most recent ToolMessage using Python best practices
     for message in reversed(messages):
         if getattr(message, 'tool_call_id', None) is not None:
+            print('##############################')
+            print('extractig content from the tool call id')
             content = str(message.content)
             if "Email sent" in content or " scheduled" in content:
                 response_text = content
